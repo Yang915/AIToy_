@@ -9,10 +9,7 @@ MUSIC_PATH = 'source/儿歌大全/music'
 COVER_PATH = 'source/儿歌大全/cover'
 
 
-#二维码个数
-QR_NUM=10
-#二维码生成API(联动接口)
-QR_URL='http://qr.topscan.com/api.php?text='
+
 
 # 响应数据格式配置
 RESPONSE = {
