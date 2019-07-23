@@ -31,6 +31,7 @@ def reg():
             RESPONSE['CODE'] = 1
             RESPONSE['MSG'] = '注册失败！'
         else:
+            RESPONSE['CODE'] = 0
             RESPONSE['MSG'] = '注册成功！'
     return jsonify(RESPONSE)
 
@@ -41,6 +42,7 @@ def login():
     login_dict = request.form.to_dict()
     user_ = MGDB['Users'].find_one(login_dict)
     if user_:
+
         RESPONSE['MSG'] = '登录成功！'
         user_['_id'] = str(user_.get('_id'))
         user_.pop('password')
