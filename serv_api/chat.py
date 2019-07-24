@@ -1,7 +1,13 @@
+import os
+import time
+from uuid import uuid4
+
 from bson import ObjectId
 from flask import Blueprint, request, jsonify
 
-from settings import RESPONSE, MGDB
+from baiduAI import tts
+from chat_count import get_redis
+from settings import RESPONSE, MGDB, CHAT_PATH
 
 bp_chat = Blueprint("bp_chat", __name__)
 
@@ -34,9 +40,35 @@ def recv_msg():
     data = request.form.to_dict()
     # ImmutableMultiDict([('from_user', '5d36e5852a3b1c2b3f9e7882'), ('to_user', '5d36e5ae2a3b1c2b3f9e7884')])
     from_user = data.get("from_user")
-    to_user = data.get("from_user")
-    chat_list=MGDB.Chats.find_one({"user_list":{"$all":[from_user,to_user]}}).get("chat_list")
+    to_user = data.get("to_user")
+
+
+    count = get_redis(to_user, from_user)
+
+    # 语音合成提示信息
+    to_toy_info = MGDB.Toys.find_one({"_id": ObjectId(to_user)})
+    to_toy_friends = to_toy_info.get("friend_list")
+    for friend in to_toy_friends:
+        if friend.get("friend_id") == from_user:
+            text = f"以下播放来自{friend.get('friend_remark')}的{count}条语音消息!" if count else f"当前没有收到来自{friend.get('friend_remark')}的任何语音消息!"
+            # if count:
+            #     text = f"以下播放来自{friend.get('friend_remark')}的{count}条语音消息!"
+            # else:
+            #     text=f"当前没有收到来自{friend.get('friend_remark')}的任何语音消息!"
+            break
+    ring_name = f"cout_{uuid4()}.wav"
+    ring_path = os.path.join(CHAT_PATH, ring_name)
+    tts(text, ring_path)
+    ring_chat={
+        "from_user": from_user,
+        "chat": ring_name,
+        "create_time": time.time()
+    }
+    chat_list = MGDB.Chats.find_one({"user_list": {"$all": [from_user, to_user]}}).get("chat_list")[-count:]#type:list
+    chat_list.reverse()
+    chat_list.append(ring_chat)
 
 
     return jsonify(chat_list)
+
 
