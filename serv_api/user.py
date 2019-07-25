@@ -1,6 +1,7 @@
 from bson import ObjectId
 from flask import Blueprint, request, jsonify
 
+from chat_count import get_all
 from settings import MGDB, RESPONSE
 
 bp_user = Blueprint('bp_user', __name__)
@@ -60,8 +61,10 @@ def auto_login():
     data_dict['_id'] = ObjectId(data_dict.get('_id'))
     user_ = MGDB['Users'].find_one(data_dict)
     if user_:
+        user_['chat']=get_all(data_dict['_id'])
         RESPONSE['MSG'] = '自动登录成功！'
         user_['_id'] = str(user_.get('_id'))
         user_.pop('password')
         RESPONSE['DATA'] = user_
+
     return jsonify(RESPONSE)

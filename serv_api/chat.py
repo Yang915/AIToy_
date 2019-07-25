@@ -31,6 +31,8 @@ def chat_list():
     RESPONSE['MSG'] = "查询聊天记录"
     RESPONSE['DATA'] = chats
 
+    get_redis(data.get("to_user"),data.get("from_user"))
+
     return jsonify(RESPONSE)
 
 

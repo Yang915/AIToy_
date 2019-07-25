@@ -24,6 +24,7 @@
 <script type="application/javascript" src="/static/jquery-3.3.1.min.js"></script>
 <script type="text/javascript" src="/static/Recorder.js"></script>
 <script type="application/javascript">
+    var id_list=[];
     var ws = null;
     var toy_id = null;
     var serv="http://192.168.16.63:9527";
@@ -48,6 +49,7 @@
 
 
     function create_ws(toy_id) {
+
         ws = new WebSocket(ws_serv + toy_id); // 456
         ws.onmessage = function (eventMessage) { //456.onmessage
             var recv_msg = JSON.parse(eventMessage.data);
@@ -58,6 +60,16 @@
                 document.getElementById("from_user").innerText = recv_msg.from_user;
                 document.getElementById("from_user_type").innerText = recv_msg.friend_type;
                 document.getElementById("player").src = serv+"/get_chat/" + recv_msg.chat;
+
+                var from_user=recv_msg.from_user;
+                console.log(from_user);
+                if( id_list.includes(from_user)){
+                    id_list.splice(id_list.indexOf(from_user),1);
+                    id_list.push(from_user);
+                }
+                else {id_list.push(from_user);}
+                console.log(id_list)
+
             }
         };
         ws.onclose = function () {
@@ -162,7 +174,12 @@
     }
 
     function recv_msg() {
-        var from_user = document.getElementById("from_user").innerText;
+
+        {#var from_user = document.getElementById("from_user").innerText;#}
+        console.log(id_list);
+        var from_user=id_list.pop();
+        document.getElementById("from_user").innerText=from_user;
+        console.log(id_list);
         $.post(serv+"/recv_msg", {
             from_user: from_user,
             to_user: toy_id

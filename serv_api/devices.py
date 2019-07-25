@@ -29,11 +29,10 @@ def scan_qr():
             res_Users = MGDB['Users'].find_one({'bind_toys': toy_id})
             if res_Users:
                 RESPONSE['CODE'] = 2
-                RESPONSE['MSG'] = "设备已经进行绑定"
+                RESPONSE['MSG'] = "设备已经进行绑定！"
 
                 RESPONSE['DATA'] = {
                     'toy_id': str(res_Toys.get('_id')),
-
                 }
 
     else:

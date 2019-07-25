@@ -33,6 +33,7 @@ def app_uploader():
     # {'user_id': '5d3568cb479e8a5ac7a43e11', 'to_user': '5d3569e0b3023de977701c1c'}
     # ImmutableMultiDict([('reco_file', <FileStorage: '1563854186214.amr' ('audio/amr')>)])
     # '''
+    #amr语音格式转换mp3
     filename = filename + ".mp3"
     os.system(f"ffmpeg -i {file_path} {os.path.join(CHAT_PATH,filename)}")
     os.remove(file_path)
@@ -65,8 +66,6 @@ def app_uploader():
         "filename": ring_name,
         "friend_type": "app"
     }
-
-
     set_redis(to_user,from_user)
 
     return jsonify(RESPONSE)
@@ -76,6 +75,7 @@ def app_uploader():
 @bp_uploader.route("/toy_uploader", methods=["POST"])
 def toy_uploader():
     data = request.form.to_dict()
+    print(data)
     # {'user_id': '5d36e5ae2a3b1c2b3f9e7884', 'friend_type': 'undefined', 'to_user': '5d36e5852a3b1c2b3f9e7882'}
     file = request.files.get("reco")
     filename = f"{uuid4()}.wav"
@@ -95,6 +95,29 @@ def toy_uploader():
             "createTime": time.time()  # 聊天创建时间
         }
         MGDB.Chats.update_one({"user_list": {"$all": [from_user, to_user]}}, {"$push": {"chat_list": chat}})
+
+        set_redis(to_user,from_user)
+        #通过to_user获取到发送目标的type
+        friend_list=MGDB.Toys.find_one({"_id":ObjectId(from_user)}).get("friend_list")
+        for friend in friend_list:
+            if friend.get("friend_id")==to_user:
+                type=friend.get("friend_type")
+                break
+         #如果是发给toy的得先发送一条语音提示
+        if type=='toy':
+            # 语音合成提示信息
+            to_toy_info = MGDB.Toys.find_one({"_id": ObjectId(to_user)})
+            to_toy_friends = to_toy_info.get("friend_list")
+            for friend in to_toy_friends:
+                if friend.get("friend_id") == from_user:
+                    text = f"收到一条来自{friend.get('friend_remark')}的语音消息！"
+                    break
+            ring_name ="toy2toy"+filename.rsplit(".")[0] + ".wav"
+            ring_path = os.path.join(CHAT_PATH, ring_name)
+            tts(text, ring_path)
+            filename=ring_name
+
+
 
         RESPONSE['CODE'] = 0
         RESPONSE['MSG'] = "上传成功"
