@@ -1,8 +1,8 @@
-import hashlib
 import os
 import time
 from uuid import uuid4
 
+import similar as similar
 from bson import ObjectId
 from flask import Blueprint, request, jsonify
 
@@ -10,6 +10,7 @@ from TuringRobotAPI import turingRobotAnswer
 from baiduAI import tts, asr, nlp
 from chat_count import set_redis
 from settings import RESPONSE, MGDB, CHAT_PATH
+from pypinyin_jieba_gensim import pinyin,similer
 
 bp_uploader = Blueprint("bp_uploader", __name__)
 
@@ -56,9 +57,6 @@ def app_uploader():
         "createTime": time.time()  # 聊天创建时间
     }
     MGDB.Chats.update_one({"user_list": {"$all": [from_user, to_user]}}, {"$push": {"chat_list": chat}})
-
-
-
 
     RESPONSE['CODE'] = 0
     RESPONSE['MSG'] = "上传成功"
@@ -156,20 +154,33 @@ def ai_uploader():
     question_text = asr(file_path)
     print(question_text)
     if "播放" in question_text or "音乐" in question_text or "想听" in question_text or "放一首" in question_text:
-        for song in MGDB.Content.find():
-            text = song.get('title')
-            print("---------------",song.get('title'))
-            if nlp(question_text, text):
-                response_data = {
-                    "from_user": "ai",
-                    "music": song.get("music")
-                }
-                return jsonify(response_data)
+        # 方式一：使用百度nlp相似度匹配
+        # for song in MGDB.Content.find():
+        #     text = song.get('title')
+        #     print("---------------",song.get('title'))
+        #     if nlp(question_text, text):
+        #         response_data = {
+        #             "from_user": "ai",
+        #             "music": song.get("music")
+        #         }
+        #         return jsonify(response_data)
+        #方式二： 采用机器学习的方式进行比对，比百度nlp相对较好
+        song=similer(question_text)
+        if song:
+            response_data = {
+                "from_user": "ai",
+                "music": song.get("music")
+            }
+            return jsonify(response_data)
+
 
     if "聊天" in question_text or "发消息" in question_text or "说话" in question_text:
         toy_friend_list = MGDB.Toys.find_one({"_id": ObjectId(data.get('toy_id'))}).get("friend_list")
         for friend in toy_friend_list:
-            if friend.get("friend_nick") in question_text or friend.get("friend_remark") in question_text:
+
+            # if friend.get("friend_nick") in question_text or friend.get("friend_remark") in question_text:#无法区分同音字
+            if pinyin(question_text,friend.get("friend_nick")) or pinyin(question_text,friend.get("friend_remark")):#通过pypinyin拼音进行比对
+
                 answer_name = f"answer_{filename}"
                 answer_path = os.path.join(CHAT_PATH, answer_name)
                 text_answer=f"现在可以开始和{friend.get('friend_remark')}聊天了！"
@@ -180,6 +191,7 @@ def ai_uploader():
                     "friend_type":friend.get("friend_type")
                 }
                 return jsonify(response_data)
+
     #最后匹配不到交给图灵机器人
     text_answer = turingRobotAnswer(question_text)
     answer_name = f"answer_{filename}"
